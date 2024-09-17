@@ -207,7 +207,7 @@ func (c *Container) shutdown(ctx context.Context, proc rpcProc) error {
 // Shutdown sends a graceful shutdown request to the container. The container
 // might not be terminated by the time the request completes (and might never
 // terminate).
-func (c *Container) Shutdown(ctx context.Context) (err error) {
+func (c *Container) Shutdown(ctx context.Context, options string) (err error) {
 	ctx, span := oc.StartSpan(ctx, "gcs::Container::Shutdown", oc.WithClientSpanKind)
 	defer span.End()
 	defer func() { oc.SetSpanStatus(span, err) }()

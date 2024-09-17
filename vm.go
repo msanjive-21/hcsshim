@@ -18,11 +18,11 @@ import (
 	"github.com/Microsoft/hcsshim/internal/gcs"
 	"github.com/Microsoft/hcsshim/internal/guestrequest"
 	"github.com/Microsoft/hcsshim/internal/hcs"
+	"github.com/Microsoft/hcsshim/internal/hcs/schema1"
+	hcsschema "github.com/Microsoft/hcsshim/internal/hcs/schema2"
 	"github.com/Microsoft/hcsshim/internal/log"
 	"github.com/Microsoft/hcsshim/internal/logfields"
 	"github.com/Microsoft/hcsshim/internal/requesttype"
-	"github.com/Microsoft/hcsshim/internal/schema1"
-	hcsschema "github.com/Microsoft/hcsshim/internal/schema2"
 	"github.com/Microsoft/hcsshim/internal/wclayer"
 	"github.com/Microsoft/hcsshim/osversion"
 	"github.com/sirupsen/logrus"
@@ -69,8 +69,8 @@ type VirtualMachineOptions struct {
 	AllowOvercommit         bool
 	SecureBootEnabled       bool
 	SecureBootTemplateId    string
-	HighMmioBaseInMB        int32
-	HighMmioGapInMB         int32
+	HighMmioBaseInMB        uint64
+	HighMmioGapInMB         uint64
 	HvSocketServiceOptions  map[string]HvSocketServiceOption
 }
 
@@ -98,11 +98,15 @@ type VirtualMachineSpec struct {
 }
 
 func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+
 	// Ensure the VM has access, we use opts.Id to create VM
-	if err := wclayer.GrantVmAccess(opts.Id, opts.VhdPath); err != nil {
+	if err := wclayer.GrantVmAccess(ctx, opts.Id, opts.VhdPath); err != nil {
 		return nil, err
 	}
-	if err := wclayer.GrantVmAccess(opts.Id, opts.IsoPath); err != nil {
+	if err := wclayer.GrantVmAccess(ctx, opts.Id, opts.IsoPath); err != nil {
 		return nil, err
 	}
 
@@ -125,7 +129,7 @@ func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec,
 			},
 			ComputeTopology: &hcsschema.Topology{
 				Memory: &hcsschema.Memory2{
-					SizeInMB:        int32(opts.MemoryInMB),
+					SizeInMB:        uint64(opts.MemoryInMB),
 					AllowOvercommit: opts.AllowOvercommit,
 				},
 				Processor: &hcsschema.Processor2{
@@ -208,11 +212,11 @@ func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec,
 	}
 
 	if opts.HighMmioBaseInMB != 0 {
-		spec.VirtualMachine.ComputeTopology.Memory.HighMmioBaseInMB = opts.HighMmioBaseInMB
+		spec.VirtualMachine.ComputeTopology.Memory.HighMMIOBaseInMB = opts.HighMmioBaseInMB
 	}
 
 	if opts.HighMmioGapInMB != 0 {
-		spec.VirtualMachine.ComputeTopology.Memory.HighMmioGapInMB = opts.HighMmioGapInMB
+		spec.VirtualMachine.ComputeTopology.Memory.HighMMIOGapInMB = opts.HighMmioGapInMB
 	}
 
 	return &VirtualMachineSpec{
@@ -369,7 +373,7 @@ func (vm *VirtualMachineSpec) Start() error {
 			Log:      logrus.WithField(logfields.UVMID, vm.ID),
 			IoListen: gcs.HvsockIoListen(vm.runtimeId),
 		}
-		vm.gc, err = gcc.Connect(ctx)
+		vm.gc, err = gcc.Connect(ctx, false)
 		if err != nil {
 			return err
 		}

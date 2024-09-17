@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/Microsoft/hcsshim/internal/hcs"
-	hcsschema "github.com/Microsoft/hcsshim/internal/schema2"
+	hcsschema "github.com/Microsoft/hcsshim/internal/hcs/schema2"
 )
 
 func GetHighestSupportedHcsSchemaVersion() (schemaVersion *hcsschema.Version, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 
-	serviceProperties, err := hcs.GetServiceProperties(ctx, hcsschema.PropertyQuery{PropertyTypes: []string{"Basic"}})
+	serviceProperties, err := hcs.GetServiceProperties(ctx, hcsschema.PropertyQuery{PropertyTypes: []hcsschema.PropertyType{"Basic"}})
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve HCS schema version: %s", err)
 	}
