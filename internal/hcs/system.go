@@ -226,7 +226,7 @@ func (computeSystem *System) ID() string {
 }
 
 // Shutdown requests a compute system shutdown.
-func (computeSystem *System) Shutdown(ctx context.Context) error {
+func (computeSystem *System) Shutdown(ctx context.Context, options string) error {
 	computeSystem.handleLock.RLock()
 	defer computeSystem.handleLock.RUnlock()
 
@@ -236,7 +236,7 @@ func (computeSystem *System) Shutdown(ctx context.Context) error {
 		return nil
 	}
 
-	resultJSON, err := vmcompute.HcsShutdownComputeSystem(ctx, computeSystem.handle, "")
+	resultJSON, err := vmcompute.HcsShutdownComputeSystem(ctx, computeSystem.handle, options)
 	events := processHcsResult(ctx, resultJSON)
 	switch err { //nolint:errorlint
 	case nil, ErrVmcomputeAlreadyStopped, ErrComputeSystemDoesNotExist, ErrVmcomputeOperationPending:
